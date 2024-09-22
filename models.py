@@ -218,6 +218,12 @@ class Capabilities(BaseModel):
     us_bank_transfer_payments: Optional[UsBankTransferPayments] = None
     zip_payments: Optional[ZipPayments] = None
 
+class CompanyStructure(Enum):
+    PRIVATE_PARTNERSHIP = 'private_partnership'
+    SINGLE_MEMBER_LLC = 'single_member_llc'
+    SOLE_PROPRIETORSHIP = 'sole_proprietorship'
+    UNINCORPORATED_ASSOCIATION = 'unincorporated_association'
+
 
 class Company(BaseModel):
     address: Address # TODO: Continue here
@@ -226,9 +232,9 @@ class Company(BaseModel):
     company_name: str
     owners_provided: bool = False
     ownership_declaration: OwnerShipDeclaration
-    phone: str
+    phone_number: str
     registration_number: str # Use some sort of API or tool to verify
-    structure
+    structure: CompanyStructure
 
 
 class AccountObject(BaseModel):
