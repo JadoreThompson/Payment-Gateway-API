@@ -1,8 +1,8 @@
 from db_connection import get_connection
-from models import (
-    SignUpBody,
-    User
-)
+# from models import
+from tools import print_exception
+
+import stripe
 
 # FastAPI
 from fastapi import APIRouter
@@ -13,41 +13,50 @@ from fastapi.responses import JSONResponse
 auth = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@auth.post("/signup")
-async def signup(user: SignUpBody):
-    async with get_connection() as conn:
-        try:
-            if await check_existing_user(conn, user.email):
-                return JSONResponse(status_code=409, content={"message": "User already exists"})
-
-            # Inserting User to DB
-            cols, placeholders, values = generate_cols_and_placeholders(user.dict())
-            row = await conn.fetchrow(f'''
-                INSERT INTO users ({cols}) VALUES({placeholders}) RETURNING id
-            ''', *values)
-
-            if row:
-                return JSONResponse(status_code=200,
-                                    content={"message": "Successfully Signed Up", "user_id": row["id"]})
-            return JSONResponse(status_code=501, content={"message": "Something went wrong. Please try again"})
-        except Exception as e:
-            print_exception(signup.__name__, e)
-            return JSONResponse(status_code=500, content={"message": "Internal Server Error"})
+# Important
+''' Defaults
+"requirement_collection": "application",
+"fees": {"payer": "application"},
+"losses": {"payments": "application"},
+"stripe_dashboard": {"type": "none"}
 
 
-@auth.post("/login")
-async def login(user: User):
-    async with get_connection() as conn:
-        try:
-            if await check_existing_user(conn, user.email):
-                password = await conn.fetchrow('''
-                    SELECT password FROM users WHERE email = $1
-                ''', user.email)
-                if user.password == password["password"]:
-                    return JSONResponse(status_code=200, content={"message": "Successfully Logged In"})
-                return JSONResponse(status_code=409, content={"message": "Invalid Credentials"})
-            return JSONResponse(status_code=404, content={"message": "Invalid Credentials"})
+'''
 
-        except Exception as e:
-            print_exception(signup.__name__, e)
-            return JSONResponse(status_code=500, content={"message": "Internal Server Error"})
+''' Variables
+
+'''
+
+
+@auth.post("/create-account")
+async def create_account(token):
+    account = stripe.Account.create(
+        country="GB",
+        email="johnemal@gmail.com",
+        controller={
+            "requirement_collection": "application",
+            "fees": {"payer": "application"},
+            "losses": {"payments": "application"},
+            "stripe_dashboard": {"type": "none"}
+        },
+        account_token=token
+    )
+    return account
+
+
+@auth.post("/create-token")
+async def create_token():
+    try:
+        token = stripe.Token.create(
+            account={
+                "business_type": "individual",
+                "individual": {"first_name": "Jack", "last_name": "Days"},
+                "tos_shown_and_accepted": True,
+            },
+        )
+        print(type(token))
+        item = await create_account(token=token)
+        return item
+    except Exception as e:
+        print_exception(create_token.__name__, e)
+        return False
