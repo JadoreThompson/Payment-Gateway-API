@@ -1,5 +1,5 @@
 from db_connection import get_connection
-from Resources.models import (
+from models import (
     SignUpBody,
     User
 )
@@ -7,27 +7,6 @@ from Resources.models import (
 # FastAPI
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-
-
-# Functions
-async def check_existing_user(conn, email) -> bool:
-    row = await conn.fetchrow('''
-                SELECT 1 FROM users WHERE email = $1
-            ''', email)
-    if row:
-        return True
-    return False
-
-
-def generate_cols_and_placeholders(data: dict):
-    cols = [key for key in data if data[key]]
-    placeholders = ", ".join([f"${i + 1}" for i in range(0, len(cols))])
-    values = [data[key] for key in cols]
-    return ", ".join(cols), placeholders, values
-
-
-def print_exception(func_name, e):
-    print(f"{func_name}: {type(e).__name__} - {str(e)}")
 
 
 # Initialisation

@@ -1,4 +1,5 @@
 from auth import auth
+from config import STRIPE_API_KEY
 
 # FastAPI
 import uvicorn
