@@ -1,5 +1,6 @@
 import asyncio
 from contextlib import asynccontextmanager
+
 from pathlib import Path
 from urllib.parse import quote
 
@@ -33,21 +34,27 @@ async def get_connection():
 
 
 async def create_tables():
-    async with get_connection() as conn:
-        await conn.execute('''\
-            CREATE TABLE IF NOT EXISTS users(
-                user_id SERIAL PRIMARY KEY,
-                email VARCHAR(20) UNIQUE NOT NULL,
-                password VARCHAR(100) NOT NULL,
-                fname VARCHAR NOT NULL,
-                sname VARCHAR NOT NULL
-            );
-        ''')
-        print(f"{create_tables.__name__}: Tables Created")
+    conn = await asyncpg.connect(
+        dsn=f"postgresql://{os.getenv('DB_USER')}:{quote(os.getenv('DB_PASSWORD'))}@{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}"
+    )
+
+    await conn.execute('''\
+        CREATE TABLE users (
+            user_id SERIAL PRIMARY KEY,
+            business_type VARCHAR(50) NOT NULL,
+            first_name VARCHAR NOT NULL,
+            last_name VARCHAR NOT NULL,
+            password VARCHAR NOT NULL,
+            stripe_account_id VARCHAR(100),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    ''')
+    print(f"{create_tables.__name__}: Tables Created")
 
 
 def run():
     asyncio.run(create_tables())
+
 
 
 if __name__ == "__main__":

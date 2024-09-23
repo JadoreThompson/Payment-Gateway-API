@@ -1,3 +1,4 @@
+import re
 from enum import Enum
 from typing import Optional
 
@@ -125,7 +126,7 @@ class CompanyVerificationObject(BaseModel):
 
 
 class FeesObject(BaseModel):
-    payer: FeePayerTypes
+    payer: Optional[FeePayerTypes] = FeePayerTypes.APPLICATION.value
 
     @field_validator('payer')
     @classmethod
@@ -136,7 +137,7 @@ class FeesObject(BaseModel):
 
 
 class LossesObject(BaseModel):
-    payments: FeePayerTypes
+    payments: Optional[FeePayerTypes] = FeePayerTypes.APPLICATION.value
 
     @field_validator('payments')
     @classmethod
@@ -157,10 +158,10 @@ class OwnershipDeclarationObject(BaseModel):
 
 
 class ControllerObject(BaseModel):
-    fees: FeesObject
-    losses: LossesObject
-    requirement_collection: FeePayerTypes
-    stripe_dashboard: StripeDashboardObject
+    fees: Optional[FeesObject] = FeesObject
+    losses: Optional[LossesObject] = LossesObject
+    requirement_collection: Optional[FeePayerTypes] = FeePayerTypes.APPLICATION.value
+    stripe_dashboard: Optional[StripeDashboardObject] = StripeDashboardObject
 
     @field_validator('requirement_collection')
     @classmethod
@@ -178,18 +179,18 @@ class TOSAcceptanceObject(BaseModel):
 
 '''Main Objects'''
 class IndividualObject(BaseModel):
-    address: AddressObject
-    dob: DOBObject
+    address: Optional[AddressObject] = None
+    dob: Optional[DOBObject] = None
     email: EmailStr
     first_name: str
-    gender: str
+    gender: Optional[str] = None
     last_name: str
-    maiden_name: str
+    maiden_name: Optional[str] = None
     phone: str
     political_exposure: Optional[str] = PoliticalExposureType.NONE.value
-    registered_address: AddressObject
-    relationship: RelationShipObject
-    verification: CompanyVerificationObject
+    registered_address: Optional[AddressObject] = None
+    relationship: Optional[RelationShipObject] = None
+    verification: Optional[CompanyVerificationObject] = None
 
     @field_validator('gender')
     @classmethod
@@ -224,28 +225,16 @@ class CompanyObject(BaseModel):
         raise ValueError(f"structure must be of {[item.name for item in BusinessStructureTypes]}")
 
 
-class TokenCreateObject(BaseModel):
-    business_type: str
-    capabilities: CapabilitiesObjects
-
-    @field_validator('business_type')
-    @classmethod
-    def validate_business_type(cls, v: str) -> str:
-        if v in [item.value for item in BusinessTypes]:
-            return v
-        raise ValueError(f"business_type must be of: {[item.value for item in BusinessTypes]}")
-
-
 class AccountObject(BaseModel):
     business_type: str
     capabilities: Optional[CapabilitiesObjects] = None
-    company: CompanyObject
-    controller: ControllerObject
+    company: Optional[CompanyObject] = None
+    controller: Optional[ControllerObject] = None
     country: str = Field(min_length=2, max_length=2)
-    email: str
-    individual: Optional[IndividualObject] = None
+    email: EmailStr
+    individual: IndividualObject
     tos_acceptance: TOSAcceptanceObject
-    type: str = 'custom'
+    type: Optional[str] = 'custom'
 
     @field_validator('business_type')
     @classmethod
@@ -254,3 +243,43 @@ class AccountObject(BaseModel):
             return v
         raise ValueError(f"business_type must be of {[item.value for item in BusinessTypes]}")
 
+
+class TokenCreateObject(BaseModel):
+    account: AccountObject
+
+
+class LoginObject(BaseModel):
+    email: str
+    password: str
+
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        min_chars = 8
+        min_nums = 2
+        min_special_chars = 2
+
+        # num_count = len(re.findall(r'\d', v))
+        # special_char_count = len(re.findall(r'[!@#$%^&*(),.?":{}|<>]', v))
+
+        if len(v) < min_chars:
+            raise ValueError(f"Password must be at least {min_chars} characters long.")
+        if len(re.findall(r'\d', v)) < min_nums:
+            raise ValueError(f"Password must contain at least {min_nums} numbers.")
+        if len(re.findall(r'[!@#$%^&*(),.?":{}|<>]', v)) < min_special_chars:
+            raise ValueError(f"Password must contain at least {min_special_chars} special characters.")
+
+        return v
+
+
+class SignUpObject(BaseModel):
+    first_name: str
+    last_name: str
+    business_type: str
+
+    @field_validator('business_type')
+    @classmethod
+    def validate_business_type(cls, v: str) -> str:
+        if v in [item.value for item in BusinessTypes]:
+            return v
+        raise ValueError(f"business_type must be of {[item.value for item in BusinessTypes]}")
