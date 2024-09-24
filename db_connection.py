@@ -41,6 +41,8 @@ async def create_tables():
     await conn.execute('''\
         CREATE TABLE users (
             user_id SERIAL PRIMARY KEY,
+            email VARCHAR UNIQUE NOT NULL,
+            phone VARCHAR(13) UNIQUE NOT NULL,
             business_type VARCHAR(50) NOT NULL,
             first_name VARCHAR NOT NULL,
             last_name VARCHAR NOT NULL,

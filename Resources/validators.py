@@ -8,20 +8,6 @@ async def check_if_user_exists(cur, email) -> bool:
     return False
 
 
-def get_cols_and_placeholders(data: dict) -> Tuple[str, str, list]:
-    """
-    :param data:
-    :return:
-        - 'col1', 'col2', 'col3'
-        - $1, $1, $1
-        - [val1, val2, val3]
-    """
-    cols = [key for key in data if data[key]]
-    placeholders = [f"${i}" for i in range(len(cols))]
-    values = [data[key] for key in cols]
-    return ", ".join(cols), ", ".join(placeholders), values
-
-
 def validate_password(v: str) -> str:
     min_chars = 8
     min_nums = 2
