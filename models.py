@@ -252,30 +252,32 @@ class LoginObject(BaseModel):
     email: str
     password: str
 
-    @field_validator('password')
-    @classmethod
-    def validate_password(cls, v: str) -> str:
-        min_chars = 8
-        min_nums = 2
-        min_special_chars = 2
+    # @field_validator('password')
+    # @classmethod
+    # def validate_password(cls, v: str) -> str:
+    #     min_chars = 8
+    #     min_nums = 2
+    #     min_special_chars = 2
+    #
+    #     # num_count = len(re.findall(r'\d', v))
+    #     # special_char_count = len(re.findall(r'[!@#$%^&*(),.?":{}|<>]', v))
+    #
+    #     if len(v) < min_chars:
+    #         raise ValueError(f"Password must be at least {min_chars} characters long.")
+    #     if len(re.findall(r'\d', v)) < min_nums:
+    #         raise ValueError(f"Password must contain at least {min_nums} numbers.")
+    #     if len(re.findall(r'[!@#$%^&*(),.?":{}|<>]', v)) < min_special_chars:
+    #         raise ValueError(f"Password must contain at least {min_special_chars} special characters.")
+    #
+    #     return v
 
-        # num_count = len(re.findall(r'\d', v))
-        # special_char_count = len(re.findall(r'[!@#$%^&*(),.?":{}|<>]', v))
 
-        if len(v) < min_chars:
-            raise ValueError(f"Password must be at least {min_chars} characters long.")
-        if len(re.findall(r'\d', v)) < min_nums:
-            raise ValueError(f"Password must contain at least {min_nums} numbers.")
-        if len(re.findall(r'[!@#$%^&*(),.?":{}|<>]', v)) < min_special_chars:
-            raise ValueError(f"Password must contain at least {min_special_chars} special characters.")
-
-        return v
-
-
-class SignUpObject(BaseModel):
+class SignUpObject(LoginObject):
     first_name: str
     last_name: str
+    phone: str
     business_type: str
+    tos_acceptance: bool
 
     @field_validator('business_type')
     @classmethod

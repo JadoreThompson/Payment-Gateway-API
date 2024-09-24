@@ -6,13 +6,20 @@ from db_connection import get_connection, init_db_pool, close_db_pool
 
 # FastAPI
 import uvicorn
-from fastapi import FastAPI, Request
+from pydantic import ValidationError
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+
+class CustomHTTPException(HTTPException):
+    def __init__(self, detail: str, status_code: int = 422):
+        super().__init__(status_code=status_code, detail=detail)
+
+
 # Env Vars
 origins = [
-    "http://127.0.0.1:5000/auth/signup"
+    "http://127.0.0.1:8000"
 ]
 
 # Initialisation
@@ -33,11 +40,6 @@ app.add_middleware(
 )
 
 app.include_router(auth)
-
-
-@app.exception_handler(ValueError)
-async def value_error_handler(request: Request, exc: ValueError):
-    return {"caught"}
 
 
 @app.get("/")

@@ -1,6 +1,8 @@
+import re
 from contextlib import asynccontextmanager
 from typing import Tuple
 
+from Resources.validators import check_if_user_exists, validate_password
 from db_connection import get_connection
 from models import (
 LoginObject,
@@ -16,27 +18,6 @@ import stripe
 from fastapi import FastAPI, APIRouter
 from fastapi.responses import JSONResponse
 
-
-# Important
-''' Defaults
-"requirement_collection": "application",
-"fees": {"payer": "application"},
-"losses": {"payments": "application"},
-"stripe_dashboard": {"type": "none"}
-'''
-
-
-async def check_if_user_exists(cur, email) -> bool:
-    if await cur.fetchrow('SELECT 1 FROM users WHERE email = $1', email):
-        return True
-    return False
-
-
-def get_cols_and_placeholders(data) -> Tuple[str, str, list]:
-    cols = [key for key in data if data[key]]
-    placeholders = [f"${i}" for i in range(len(cols))]
-    values = [(data[key]) for key in cols]
-    return ", ".join(cols), ", ".join(placeholders), values
 
 
 # Initialisation
@@ -64,29 +45,12 @@ async def create_account(account_obj: AccountObject, token):
 
 
 @auth.post('/signup')
-async def signup(user: TokenCreateObject):
-    async with get_connection() as conn:
-        async with conn.cursor() as cur:
-            try:
-                if await check_if_user_exists(cur, user.email):
-                    return JSONResponse(status_code=409, content={"message": "User already exists"})
-
-                # TODO: Implement some sort of confirm email flow
-
-                # Getting the secure token of the user's information
-                signup_obj = SignUpObject(**user.dict(exclude={key for key in user.dict() if key not in [key for key in SignUpObject.__fields__]}))
-                cols, placeholders, values = get_cols_and_placeholders(signup_obj.dict())
-
-                if await cur.execute(f'INSERT INTO users({cols}) VALUES ({placeholders}) RETURNING id', values):
-                    secure_token = await create_token(user)
-                    if secure_token:
-                        return JSONResponse(status_code=200, content={
-                            "message": "Signed up successfully",
-                            "user_token": secure_token
-                        })
-            except Exception as e:
-                print_exception(signup.__name__, e)
-                return JSONResponse(status_code=500, content={"message": "Something went wrong"})
+async def signup(user: SignUpObject):
+    try:
+        validate_password(user.password)
+    except ValueError as e:
+        return JSONResponse(status_code=409, content={"message": str(e)})
+    return JSONResponse(status_code=200, content={"message": "Successfully signed up", "user": user.dict()})
 
 
 @auth.post('/login')
