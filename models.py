@@ -1,17 +1,24 @@
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 '''Enums'''
 
 
+class RecurringIntervalTypes(str, Enum):
+    DAY = 'day'
+    WEEK = 'week'
+    MONTH = 'month'
+    YEAR = 'year'
+
+
 class BusinessTypes(str, Enum):
     COMPANY = 'company'
     INDIVIDUAL = 'individual'
-    NON_PROFIT = 'non_profit'
-    GOVERNMENT_ENTITY = 'government_entity'
+    # NON_PROFIT = 'non_profit'
+    # GOVERNMENT_ENTITY = 'government_entity'
 
 
 class CompanyStructureTypes(str, Enum):
@@ -28,6 +35,11 @@ class CompanyStructureTypes(str, Enum):
     GOVERNMENT_INSTRUMENTALITY = "government_instrumentality"
     GOVERNMENTAL_UNIT = "governmental_unit"
     TAX_EXEMPT_GOVERNMENT_INSTRUMENTALITY = "tax_exempt_government_instrumentality"
+
+
+class InvoiceCollectionTypes(str, Enum):
+    CHARGE_AUTOMATICALLY = 'charge_automatically'
+    SEND_INVOICE = 'send_invoice'
 
 
 class GenderTypes(str, Enum):
@@ -234,3 +246,36 @@ class StripeSignUpObject(SignUpObject):
 
 class AccountToken(BaseModel):
     account_token: str
+
+
+class RecurringObject(BaseModel):
+    interval: str  # Must be a valid RecurringIntervalType
+    interval_count: int = Field(ge=1)
+
+
+class CustomerObject(BaseModel):
+    name: str
+    email: str
+    description: Optional[str] = None
+
+
+class ProductObject(BaseModel):
+    name: str
+    active: Optional[bool] = True
+    default_price_data: dict
+    recurring: Optional[RecurringObject] = None
+
+
+class InvoiceObject(BaseModel):
+    # auto_advance: bool = False
+    applicant_fee_amount: Optional[int] = None
+    customer_id: Optional[str] = None
+    new_customer: Optional[CustomerObject] = None # Create a customer if None
+    currency: Optional[str] = Field(min_length=3, max_length=3)
+    issuer: Optional[str] = 'account'  # This is the reference as to who is making th invoice creation
+    product: Optional[ProductObject] = None  # Must send a product through so we can create a product for them
+    unit_amount: Optional[int] = None
+    due_date: Optional[str] = None
+    connect_account: str = None
+
+# class UpdateInvoiceObject(InvoiceObject):

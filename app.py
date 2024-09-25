@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from auth import auth
+from payments import payments
 from config import STRIPE_API_KEY
 from db_connection import get_connection, init_db_pool, close_db_pool
 
@@ -40,6 +41,7 @@ app.add_middleware(
 )
 
 app.include_router(auth)
+app.include_router(payments)
 
 
 @app.get("/")

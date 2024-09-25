@@ -89,6 +89,7 @@ async def signup(user: StripeSignUpObject):
             token = create_token(user.business_type, user.first_name, user.last_name, user.tos_shown_and_accepted)
             account = create_account(user.email, token)
 
+            # TODO: Encrypt all sensitive data
             # Inserting use to Table
             db_signup_object = SignUpObject(**user.dict(exclude={"tos_show_and_accepted"})).dict()
             db_signup_object["created_at"] = int(time.time())
