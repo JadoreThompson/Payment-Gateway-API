@@ -266,16 +266,21 @@ class ProductObject(BaseModel):
     recurring: Optional[RecurringObject] = None
 
 
+class InvoiceIssuerObject(BaseModel):
+    type: Optional[str] = 'account'
+    account: Optional[str] = None
+
+
 class InvoiceObject(BaseModel):
     # auto_advance: bool = False
     applicant_fee_amount: Optional[int] = None
     customer_id: Optional[str] = None
     new_customer: Optional[CustomerObject] = None # Create a customer if None
     currency: Optional[str] = Field(min_length=3, max_length=3)
-    issuer: Optional[str] = 'account'  # This is the reference as to who is making th invoice creation
-    product: Optional[ProductObject] = None  # Must send a product through so we can create a product for them
+    issuer: Optional[InvoiceIssuerObject] = InvoiceIssuerObject
+    product: Optional[str] = None
+    new_product: Optional[ProductObject] = None  # Must send a product through so we can create a product for them
     unit_amount: Optional[int] = None
     due_date: Optional[str] = None
-    connect_account: str = None
 
 # class UpdateInvoiceObject(InvoiceObject):

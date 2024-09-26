@@ -1,3 +1,5 @@
+import sys
+
 import stripe
 from datetime import datetime
 
@@ -12,38 +14,61 @@ from fastapi.responses import JSONResponse
 payments = APIRouter(prefix='/payments', tags=['payments'])
 
 
-def create_invoice_with_product_and_customer(data, days_until_due):
+# TODO: Make all forwarded to the connected account
+def create_invoice_with_product_and_customer(og_data, days_until_due=None):
     """
-    :param days_until_due:
-    :param data: [dict]
-    :return: InvoiceItem
+    :param og_data: [dict] - contains the data for creating an invoice
+    :param days_until_due: [int] - number of days until the invoice is due
+    :return: InvoiceItem object
     """
-    data = {k: v for k, v in data if data[k] is not None}
+    data = {k: v for k, v in og_data.items() if v is not None}
+    connect_account_id = data.get("issuer", {}).get("account")
 
-    # product = stripe.Product.create(name=data["product"]["name"],active=data["product"]["active"])
-    # price = stripe.Price.create(product=product['id'], unit_amount=data['unit_amount'], currency=data['currency'])
-    # customer = stripe.Customer.create(
-    #     name=data["customer"]["name"],email=data["customer"]["email"],description=data["customer"]["description"])
-    # invoice = stripe.Invoice.create(customer=customer['id'], collection_method='send_invoice', stripe_account=data["connect_account"],
-    #                                 application_fee_amount=data["unit_amount"] * 0.02, days_until_due=days_until_due)
-    #
-    # return stripe.InvoiceItem.create(customer=customer['id'], price=price['id'], invoice=invoice['id'])
+    try:
+        product = stripe.Product.create(
+            name=data.get("new_product", {}).get("name"),
+            active=data.get("new_product", {}).get("active"),
+            stripe_account=connect_account_id
+        )
 
-    product = stripe.Product.create(name=data.get("product", {}).get("name", None),
-                                    active=data.get("product", {}).get("active", None))
-    price = stripe.Price.create(product=product['id'], unit_amount=data.get('unit_amount', None),
-                                currency=data.get('currency', None))
-    customer = stripe.Customer.create(name=data.get("customer", {}).get("name", None),
-                                      email=data.get("customer", {}).get("email", None),
-                                      description=data.get("customer", {}).get("description", None))
-    invoice = stripe.Invoice.create(customer=customer['id'], collection_method='send_invoice',
-                                    stripe_account=data.get("connect_account", None),
-                                    application_fee_amount=data.get("unit_amount", 0) * 0.02,
-                                    days_until_due=days_until_due)
-    return stripe.InvoiceItem.create(customer=customer['id'], price=price['id'], invoice=invoice['id'])
+        price = stripe.Price.create(
+            product=product['id'],
+            unit_amount=data.get('unit_amount'),
+            currency=data.get('currency'),
+            stripe_account=connect_account_id
+        )
+
+        customer = stripe.Customer.create(
+            name=data.get("new_customer", {}).get("name"),
+            email=data.get("new_customer", {}).get("email"),
+            description=data.get("new_customer", {}).get("description", None),
+            stripe_account=connect_account_id
+        )
+
+        invoice = stripe.Invoice.create(
+            customer=customer['id'],
+            collection_method='send_invoice',
+            stripe_account=connect_account_id,
+            application_fee_amount=int(data.get("unit_amount", 0) * 0.02),
+            days_until_due=days_until_due,
+            # due_date=data.get('due_date'),
+            issuer={
+                "type": data.get("issuer", {}).get("type"),
+                "account": connect_account_id
+            },
+            transfer_data={
+                'destination': connect_account_id
+            }
+            #on_behalf_of=data.get("issuer").get("account")
+        )
+        # Important: This assignment isn't working ^
+        return stripe.InvoiceItem.create(customer=customer['id'], price=price['id'], invoice=invoice['id'], stripe_account=connect_account_id)
+    except Exception as e:
+        raise Exception(f"Line {sys.exc_info()[-1].tb_lineno}| [{create_invoice_with_product_and_customer.__name__}] - {e}")
 
 
 def create_invoice_with_existing_customer(data):
+    pass
 
 
 @payments.post("/invoice/create")
@@ -61,10 +86,11 @@ async def create_invoice(invoice_request: InvoiceObject):
         days_until_due = invoice_request_due_date - date
 
         # Creating the invoice
-        create_invoice_with_product_and_customer(invoice_request.dict(), int(days_until_due.days))
-        return JSONResponse(status_code=200, content={"message": "Successfully created invoice"})
+        invoice = create_invoice_with_product_and_customer(invoice_request.dict(), int(days_until_due.days))
+        return JSONResponse(status_code=200, content={"message": "Successfully created invoice", 'extra': invoice})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"message": "Something went wrong", 'detail': str(e)})
+        print(e)
+        return JSONResponse(status_code=500, content={"message": "Something went wrong", 'type': f"Type: {type(e)}", 'detail': str(e)})
 
 
 @payments.put("/invoice/update")

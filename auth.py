@@ -1,3 +1,4 @@
+import datetime
 import time
 import stripe
 import re
@@ -92,7 +93,7 @@ async def signup(user: StripeSignUpObject):
             # TODO: Encrypt all sensitive data
             # Inserting use to Table
             db_signup_object = SignUpObject(**user.dict(exclude={"tos_show_and_accepted"})).dict()
-            db_signup_object["created_at"] = int(time.time())
+            db_signup_object["created_at"] = datetime.datetime.now()  #int(time.time())
             cols, placeholders, values = get_cols_and_placeholders(db_signup_object)
             await conn.execute(f'INSERT INTO users ({cols}) VALUES ({placeholders})', *values)
 
