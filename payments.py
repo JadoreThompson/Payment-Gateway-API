@@ -183,6 +183,3 @@ async def update_invoice(update_invoice_request: str):
 @payments.delete("/invoice/delete")
 async def delete_invoice(delete_invoice_request: str):
     pass
-
-
-#  print(stripe.Price.list(product='prod_Qv5GaUG0ZPrtOY', stripe_account='acct_1Q35XsQ8ogKFGPdO')['data'][0]['id'])
