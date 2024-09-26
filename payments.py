@@ -4,7 +4,7 @@ import stripe
 from datetime import datetime
 
 # Directory
-from models import InvoiceObject
+from models import InvoiceObject, InvoiceDeleteObject
 
 # FastAPI
 from fastapi import APIRouter
@@ -14,7 +14,6 @@ from fastapi.responses import JSONResponse
 payments = APIRouter(prefix='/payments', tags=['payments'])
 
 
-# TODO: Make all forwarded to the connected account
 def create_invoice_with_new_product_and_customer(og_data, days_until_due=None):
     """
     :param og_data: [dict] - contains the data for creating an invoice
@@ -59,6 +58,13 @@ def create_invoice_with_new_product_and_customer(og_data, days_until_due=None):
 
 
 def create_invoice_with_existing_customer(og_data, days_until_due):
+    """
+    Creates an invoice for an existing customer using provided data.
+
+    :param og_data: [dict] - contains the data for creating an invoice
+    :param days_until_due: [int] - number of days until the invoice is due
+    :return: InvoiceItem object
+    """
     data = {k: v for k, v in og_data.items() if v is not None}
     connect_account_id = data.get("issuer", {}).get("account")
 
@@ -90,6 +96,13 @@ def create_invoice_with_existing_customer(og_data, days_until_due):
 
 
 def create_invoice_with_product_id(og_data, days_until_due):
+    """
+    Creates a draft invoice using a product ID and a new customer.
+
+    :param og_data: [dict] - contains the data for creating an invoice
+    :param days_until_due: [int] - number of days until the invoice is due
+    :return: InvoiceItem object
+    """
     data = {k: v for k, v in og_data.items() if v is not None}
     connect_account_id = data.get("issuer", {}).get("account")
 
@@ -118,10 +131,15 @@ def create_invoice_with_product_id(og_data, days_until_due):
     except Exception as e:
         raise Exception(f"Line {sys.exc_info()[-1].tb_lineno}| [{create_invoice_with_product_id.__name__}] - {e}")
 
-    pass
-
 
 def create_invoice_with_premade_entities(og_data, days_until_due):
+    """
+    Creates a draft invoice using premade entities for a specified customer.
+
+    :param og_data: [dict] - contains the data for creating an invoice
+    :param days_until_due: [int] - number of days until the invoice is due
+    :return: InvoiceItem object
+    """
     data = {k: v for k, v in og_data.items() if v is not None}
     connect_account_id = data.get("issuer", {}).get("account")
 
@@ -181,5 +199,10 @@ async def update_invoice(update_invoice_request: str):
 
 
 @payments.delete("/invoice/delete")
-async def delete_invoice(delete_invoice_request: str):
-    pass
+async def delete_invoice(delete_invoice_request: InvoiceDeleteObject):
+    try:
+        # Can only delete draft invoices
+        stripe.Invoice.delete(delete_invoice_request.invoice_id, stripe_account=delete_invoice_request.connected_account_id)
+    except Exception as e:
+        print(e)
+        return JSONResponse(status_code=500, content={"message": "Something went wrong"})

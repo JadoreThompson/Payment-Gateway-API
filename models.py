@@ -293,3 +293,8 @@ class InvoiceObject(BaseModel):
     currency: str = Field(min_length=3, max_length=3)
     due_date: str
     applicant_fee_amount: Optional[int] = 50
+
+
+class InvoiceDeleteObject(BaseModel):
+    invoice_id: str
+    connected_account_id: str
