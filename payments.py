@@ -51,18 +51,16 @@ def create_invoice_with_product_and_customer(og_data, days_until_due=None):
             stripe_account=connect_account_id,
             application_fee_amount=int(data.get("unit_amount", 0) * 0.02),
             days_until_due=days_until_due,
-            # due_date=data.get('due_date'),
-            issuer={
-                "type": data.get("issuer", {}).get("type"),
-                "account": connect_account_id
-            },
-            transfer_data={
-                'destination': connect_account_id
-            }
-            #on_behalf_of=data.get("issuer").get("account")
+            # issuer={
+            #     "type": data.get("issuer", {}).get("type"),
+            #     "account": connect_account_id
+            # },
+            # transfer_data={
+            #     'destination': connect_account_id
+            # }
         )
-        # Important: This assignment isn't working ^
         return stripe.InvoiceItem.create(customer=customer['id'], price=price['id'], invoice=invoice['id'], stripe_account=connect_account_id)
+    
     except Exception as e:
         raise Exception(f"Line {sys.exc_info()[-1].tb_lineno}| [{create_invoice_with_product_and_customer.__name__}] - {e}")
 
