@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, root_validator
 
 
 '''Enums'''
@@ -270,29 +270,25 @@ class InvoiceIssuerObject(BaseModel):
     account: Optional[str] = None
 
 
-# class InvoiceObject(BaseModel):
-#     # auto_advance: bool = False
-#     applicant_fee_amount: Optional[int] = None
-#     customer_id: Optional[str] = None
-#     new_customer: Optional[CustomerObject] = None # Create a customer if None
-#     currency: Optional[str] = Field(min_length=3, max_length=3)
-#     issuer: Optional[InvoiceIssuerObject] = InvoiceIssuerObject
-#     product: Optional[str] = None
-#     new_product: Optional[ProductObject] = None  # Must send a product through so we can create a product for them
-#     unit_amount: Optional[int] = None
-#     due_date: Optional[str] = None
-
-
 class InvoiceObject(BaseModel):
     product_id: Optional[str] = None
     new_product: Optional[ProductObject] = None
     customer_id: Optional[str] = None
     new_customer: Optional[CustomerObject] = None
-    issuer: Optional[InvoiceIssuerObject] = InvoiceIssuerObject
+    issuer: Optional[InvoiceIssuerObject] = None
     unit_amount: int = Field(ge=200)
     currency: str = Field(min_length=3, max_length=3)
     due_date: str
     applicant_fee_amount: Optional[int] = 50
+
+
+class UpdateInvoiceObject(BaseModel):
+    id: str
+    due_date: Optional[str] = None
+    days_until_due: Optional[int] = None
+    default_payment_method: Optional[str] = None
+    description: Optional[str] = None
+    stripe_account: str
 
 
 class InvoiceDeleteObject(BaseModel):
