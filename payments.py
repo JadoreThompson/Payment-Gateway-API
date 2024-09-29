@@ -12,6 +12,7 @@ from models import InvoiceObject, InvoiceDeleteObject, UpdateInvoiceObject
 # FastAPI
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
+from fastapi.requests import Request
 
 # Envs
 issuer_obj = {
@@ -49,6 +50,7 @@ async def create_invoice_with_new_product_and_customer(og_data, days_until_due=N
     try:
         product = await stripe.Product.create_async(
             name=data.get("new_product", {}).get("name"),
+            description=data.get("new_product", {}).get("description"),
             active=data.get("new_product", {}).get("active"),
             stripe_account=connect_account_id
         )
@@ -216,7 +218,14 @@ async def create_invoice(invoice_request: InvoiceObject):
                 invoice = await create_invoice_with_premade_entities(invoice_request.__dict__, days_until_due)
             else:
                 invoice = await create_invoice_with_new_product_and_customer(og_data=invoice_request.__dict__, days_until_due=days_until_due)
-        return JSONResponse(status_code=200, content={"message": "Successfully created invoice", 'invoice': invoice})
+
+            status = 'draft'
+            # Finalising
+            if invoice_request.draft == False:
+                await stripe.Invoice.finalize_invoice_async(invoice.invoice, stripe_account="acct_1Q35XsQ8ogKFGPdO")
+                status = 'open'
+
+        return JSONResponse(status_code=200, content={"message": "Successfully created invoice", 'invoice': invoice, "status": status})
     except Exception as e:
         print(e)
         return JSONResponse(status_code=500, content={"message": "Something went wrong", 'type': f"Type: {type(e)}", 'detail': str(e)})
@@ -253,3 +262,9 @@ async def delete_invoice(delete_invoice_request: InvoiceDeleteObject):
     except Exception as e:
         print(e)
         return JSONResponse(status_code=500, content={"message": "Something went wrong"})
+
+
+# Webhook for auto updates on invoices and products
+@payments.get('/invoice/webhook')
+async def webhook_invoice(request: Request):
+    pass

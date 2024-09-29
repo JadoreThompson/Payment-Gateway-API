@@ -3,7 +3,6 @@ from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field, root_validator
 
-
 '''Enums'''
 
 
@@ -106,7 +105,7 @@ class IndividualObject(BaseModel):
     id_number_secondary: Optional[str] = None
     metadata: Optional[dict] = None
     phone: str
-    political_exposure: Optional[str] = None # Grab this from the user when onboarding
+    political_exposure: Optional[str] = None  # Grab this from the user when onboarding
     registered_address: Optional[str] = None
     relationship: Optional[RelationshipObject] = None
     verification: Optional[VerificationObject] = None
@@ -208,7 +207,6 @@ class CreateAccountObject(BaseModel):
     tos_show_and_accepted: bool  # Generate and put at final stage of onboarding
     type: Optional[str] = 'custom'
 
-
     '''
         Let the user decide which capability they want
         when the time comes:
@@ -257,6 +255,7 @@ class CustomerObject(BaseModel):
     name: str
     email: str
     description: Optional[str] = None
+    stripe_account: Optional[str] = None
 
 
 class ProductObject(BaseModel):
@@ -280,6 +279,7 @@ class InvoiceObject(BaseModel):
     currency: str = Field(min_length=3, max_length=3)
     due_date: str
     applicant_fee_amount: Optional[int] = 50
+    draft: bool
 
 
 class UpdateInvoiceObject(BaseModel):
@@ -294,3 +294,9 @@ class UpdateInvoiceObject(BaseModel):
 class InvoiceDeleteObject(BaseModel):
     invoice_id: str
     connected_account_id: str
+
+
+class CreateProductObject(ProductObject):
+    unit_amount: int
+    currency: str
+    stripe_account: Optional[str] = None

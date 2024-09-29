@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
 
-from auth import auth
-from payments import payments
+# Directory Modules
 from config import STRIPE_API_KEY
 from db_connection import get_connection, init_db_pool, close_db_pool
+from auth import auth
+from customer import customer
+from payments import payments
 
 # FastAPI
 import uvicorn
@@ -11,6 +13,8 @@ from pydantic import ValidationError
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+
+from products import products
 
 
 class CustomHTTPException(HTTPException):
@@ -40,9 +44,11 @@ app.add_middleware(
     allow_credentials=True
 )
 
+# Importing Prefixes
 app.include_router(auth)
 app.include_router(payments)
-
+app.include_router(customer)
+app.include_router(products)
 
 @app.get("/")
 async def read_root():
