@@ -3,10 +3,12 @@ import time
 import stripe
 import re
 from contextlib import asynccontextmanager
-from typing import Tuple
+from typing import Tuple, Optional
 import asyncpg
+from stripe import InvalidRequestError
 
 # Directory Modules
+from tools import deep_convert_to_dict
 from Resources.validators import check_if_user_exists, validate_password
 from db_connection import get_connection
 from models import (
@@ -15,7 +17,7 @@ from models import (
     SignUpObject,
     TokenCreateObject,
     CreateAccountObject,
-    AccountToken, UpdateAccountObject
+    AccountToken, AccountUpdateIndividualObject, AccountUpdateBusinessProfileObject
 )
 from tools import print_exception, get_cols_and_placeholders
 
@@ -108,19 +110,26 @@ async def login(user: LoginObject):
                 return JSONResponse(status_code=500, content={"message": "Something went wrong", "error": str(e)})
 
 
-from tools import deep_convert_to_dict
 @auth.post("/update-user")
-async def update_user(update_request: UpdateAccountObject):
+async def update_user(update_individual_request: Optional[AccountUpdateIndividualObject] = None, update_business_profile_request: Optional[AccountUpdateBusinessProfileObject] = None):
     try:
-        del update_request.type
-        del update_request.controller
-        data = deep_convert_to_dict(update_request.__dict__)
-        token = await stripe.Token.create_async(account={"individual": data['individual']})
-        await stripe.Account.modify_async(account_token=token, stripe_account=update_request.stripe_account)
+        if update_business_profile_request is not None:
+            await stripe.Account.modify_async(
+                stripe_account=update_business_profile_request.stripe_account,
+                business_profile={'url': update_business_profile_request.url, 'mcc': update_business_profile_request.industry}
+            )
+
+        if update_individual_request is not None:
+            del update_individual_request.type
+            del update_individual_request.controller
+
+            data = deep_convert_to_dict(update_individual_request.__dict__)
+            token = await stripe.Token.create_async(account={"individual": data['individual']})
+            await stripe.Account.modify_async(account_token=token, stripe_account=update_individual_request.stripe_account)
+
+        return JSONResponse(status_code=200, content={"message": 'Successfully updated account', 'time': datetime.datetime.now().timestamp()})
+    except InvalidRequestError as e:
+        return JSONResponse(status_code=500, content={"message": "Error", 'error': f"{str(e).split(":")[1]}"})
     except Exception as e:
         print(f"{type(e)} - {str(e)}")
-        return JSONResponse(status_code=500, content={"message": "Error", "error": str(e)})
-
-
-from config import *
-# stripe.Account.delete("acct_1Q2hFXPr8ejCg2qQ")
+        return JSONResponse(status_code=500, content={"message": "Error", "error": f"{str(e)}"})

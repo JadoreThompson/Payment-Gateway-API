@@ -216,8 +216,14 @@ class CreateAccountObject(BaseModel):
     '''
 
 
-class UpdateAccountObject(CreateAccountObject):
+class AccountUpdateIndividualObject(CreateAccountObject):
     stripe_account: str
+
+
+class AccountUpdateBusinessProfileObject(BaseModel):
+    stripe_account: str
+    url: str
+    industry: Optional[str] = '5734'
 
 
 class TokenAccountObject(BaseModel):
