@@ -2,12 +2,12 @@ import json
 import sys
 import stripe
 import httpx
-from datetime import datetime
+from datetime import datetime, time
 
 from pydantic import BaseModel
 
 # Directory
-from models import InvoiceObject, InvoiceDeleteObject, UpdateInvoiceObject
+from models import InvoiceObject, InvoiceDeleteObject, UpdateInvoiceObject, StatRequestObject
 
 # FastAPI
 from fastapi import APIRouter
@@ -264,7 +264,78 @@ async def delete_invoice(delete_invoice_request: InvoiceDeleteObject):
         return JSONResponse(status_code=500, content={"message": "Something went wrong"})
 
 
+
+@payments.post("/get-stats")
+async def get_stats(stats_request: StatRequestObject):
+    try:
+        today_midnight = int(datetime(datetime.now().year, datetime.now().month, datetime.now().day, 0, 0).timestamp())
+        yesterday_midnight = today_midnight - 86400
+
+        func_args = {**stats_request.dict(), "created": {"gt": None}}
+
+        balance = await stripe.Balance.retrieve_async(**stats_request.dict())
+
+        # Sales
+        func_args['created']['gt'] = today_midnight
+        todays_data = await stripe.PaymentIntent.list_async(**func_args)
+        todays_sales = sum(item['amount_received'] for item in todays_data['data'])
+        try: todays_average_order_value = todays_sales / len(todays_data['data'])
+        except ZeroDivisionError: todays_average_order_value = 0
+
+        func_args["created"]["gt"] = yesterday_midnight
+        yesterday_data = await stripe.PaymentIntent.list_async(**func_args)
+        yesterday_sales = sum(item['amount_received'] for item in todays_data['data'])
+        try: yesterday_average_order_value = todays_sales / len(yesterday_data['data'])
+        except ZeroDivisionError: yesterday_average_order_value = 0
+
+        avg_order_value_growth = todays_average_order_value - yesterday_average_order_value
+
+        try:
+            sales_growth = todays_sales - yesterday_sales / yesterday_sales * 100
+        except ZeroDivisionError:
+            sales_growth = 0
+
+        # Customers
+        yesterday_customers = await stripe.Customer.list_async(**func_args)
+        yesterday_customers_count = len(yesterday_customers['data'])
+
+        func_args['created']['gt'] = today_midnight
+        today_customers = await stripe.Customer.list_async(**func_args)
+        today_customers_count = len(today_customers['data'])
+        customer_growth = today_customers_count - yesterday_customers_count
+
+        # Transactions
+        try:
+            todays_transactions = await stripe.issuing.Transaction.list(**func_args)
+            transaction_count = len(todays_transactions['data'])
+        except Exception:
+            transaction_count = 0
+
+        content = {
+            "todays_sales": todays_sales,
+            "sales_growth": sales_growth,
+            "todays_customers": today_customers_count,
+            "customer_growth": customer_growth,
+            "transaction_count": transaction_count,
+            "todays_avg_order_value": todays_average_order_value,
+            "avg_order_value_growth": avg_order_value_growth
+        }
+        return JSONResponse(status_code=200, content=content)
+    except Exception as e:
+        return JSONResponse(
+            status_code=500, content={"message": "Something went wrong", 'type': f"Type: {type(e)}", 'detail': str(e)})
+
+
 # Webhook for auto updates on invoices and products
 @payments.get('/invoice/webhook')
 async def webhook_invoice(request: Request):
     pass
+
+
+# Webhook for auto updates on transactions
+@payments.get("/transactions/webhook")
+async def webhook_transaction(request: Request):
+    pass
+
+
+#print(stripe.BalanceTransaction.list(stripe_account="acct_1Q35XsQ8ogKFGPdO"))

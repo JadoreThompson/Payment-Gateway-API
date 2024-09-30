@@ -300,3 +300,7 @@ class CreateProductObject(ProductObject):
     unit_amount: int
     currency: str
     stripe_account: Optional[str] = None
+
+
+class StatRequestObject(BaseModel):
+    stripe_account: Optional[str] = "acct_1Q35XsQ8ogKFGPdO"
