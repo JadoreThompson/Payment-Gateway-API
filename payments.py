@@ -34,7 +34,7 @@ def deep_convert_to_dict(item):
         return item
 
 
-async def create_invoice_with_new_product_and_customer(og_data, days_until_due=None, client=None):
+async def create_invoice_with_new_product_and_customer(og_data, days_until_due=None):
     """
     :param og_data: [dict] - contains the data for creating an invoice
     :param days_until_due: [int] - number of days until the invoice is due
@@ -44,9 +44,7 @@ async def create_invoice_with_new_product_and_customer(og_data, days_until_due=N
     data = deep_convert_to_dict(data)
     connect_account_id = data.get("issuer", {}).get("account")
 
-    print(json.dumps(data, indent=4))
-    print("___")
-    print(days_until_due)
+
     try:
         product = await stripe.Product.create_async(
             name=data.get("new_product", {}).get("name"),
@@ -109,6 +107,7 @@ async def create_invoice_with_existing_customer(og_data, days_until_due):
         )
 
         invoice = await stripe.Invoice.create_async(
+            auto_advance=data.get('auto_advance', True),
             customer=data.get("customer_id"),
             collection_method='send_invoice',
             stripe_account=connect_account_id,
@@ -225,7 +224,14 @@ async def create_invoice(invoice_request: InvoiceObject):
                 await stripe.Invoice.finalize_invoice_async(invoice.invoice, stripe_account="acct_1Q35XsQ8ogKFGPdO")
                 status = 'open'
 
-        return JSONResponse(status_code=200, content={"message": "Successfully created invoice", 'invoice': invoice, "status": status})
+        return JSONResponse(status_code=200, content={
+            "message": "Successfully created invoice",
+            'invoice': {
+                "invoice": invoice['invoice'],
+                "amount": invoice['amount'],
+            },
+            "status": status
+        })
     except Exception as e:
         print(e)
         return JSONResponse(status_code=500, content={"message": "Something went wrong", 'type': f"Type: {type(e)}", 'detail': str(e)})
@@ -268,12 +274,14 @@ async def delete_invoice(delete_invoice_request: InvoiceDeleteObject):
 @payments.post("/get-stats")
 async def get_stats(stats_request: StatRequestObject):
     try:
+        stats_request.stripe_account = "acct_1Q35XsQ8ogKFGPdO"
+
         today_midnight = int(datetime(datetime.now().year, datetime.now().month, datetime.now().day, 0, 0).timestamp())
         yesterday_midnight = today_midnight - 86400
 
         func_args = {**stats_request.dict(), "created": {"gt": None}}
 
-        balance = await stripe.Balance.retrieve_async(**stats_request.dict())
+        balance = await stripe.Balance.retrieve_async(**stats_request.dict())['available'][0]['amount']
 
         # Sales
         func_args['created']['gt'] = today_midnight
@@ -308,10 +316,12 @@ async def get_stats(stats_request: StatRequestObject):
         try:
             todays_transactions = await stripe.issuing.Transaction.list(**func_args)
             transaction_count = len(todays_transactions['data'])
-        except Exception:
+        except Exception as e:
+            print(f"{type(e)} - {str(e)}")
             transaction_count = 0
 
         content = {
+            "balance": balance,
             "todays_sales": todays_sales,
             "sales_growth": sales_growth,
             "todays_customers": today_customers_count,
@@ -336,6 +346,3 @@ async def webhook_invoice(request: Request):
 @payments.get("/transactions/webhook")
 async def webhook_transaction(request: Request):
     pass
-
-
-#print(stripe.BalanceTransaction.list(stripe_account="acct_1Q35XsQ8ogKFGPdO"))

@@ -270,6 +270,7 @@ class InvoiceIssuerObject(BaseModel):
 
 
 class InvoiceObject(BaseModel):
+    auto_advance: Optional[bool] = True
     product_id: Optional[str] = None
     new_product: Optional[ProductObject] = None
     customer_id: Optional[str] = None
@@ -303,4 +304,4 @@ class CreateProductObject(ProductObject):
 
 
 class StatRequestObject(BaseModel):
-    stripe_account: Optional[str] = "acct_1Q35XsQ8ogKFGPdO"
+    stripe_account: Optional[str] = None
