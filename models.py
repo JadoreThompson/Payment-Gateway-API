@@ -55,7 +55,7 @@ class AddressObject(BaseModel):
     line1: str
     line2: str
     postal_code: str
-    state: str
+    state: Optional[str] = None
 
 
 class DOBObject(BaseModel):
@@ -96,7 +96,7 @@ class RelationshipObject(BaseModel):
 class IndividualObject(BaseModel):
     address: Optional[AddressObject] = None
     dob: Optional[DOBObject] = None
-    email: EmailStr
+    email: Optional[EmailStr] = None
     first_name: str
     last_name: str
     maiden_name: Optional[str] = None
@@ -196,15 +196,15 @@ class ControllerObject(BaseModel):
 
 
 class CreateAccountObject(BaseModel):
-    business_type: str  # Do business type validation
+    business_type: Optional[str] = None  # Do business type validation
     capabilities: Optional[CapabilitiesObject] = None
     company: Optional[CompanyObject] = None
     controller: Optional[ControllerObject] = ControllerObject
     country: Optional[str] = None  # Validation Required
     email: Optional[EmailStr] = None  # Grab manually from DB
-    individual: IndividualObject
+    individual: Optional[IndividualObject] = None
     metadata: Optional[dict] = None
-    tos_show_and_accepted: bool  # Generate and put at final stage of onboarding
+    tos_show_and_accepted: Optional[bool] = None  # Generate and put at final stage of onboarding
     type: Optional[str] = 'custom'
 
     '''
@@ -214,6 +214,10 @@ class CreateAccountObject(BaseModel):
         Notes:
             - Could show them a few on signup
     '''
+
+
+class UpdateAccountObject(CreateAccountObject):
+    stripe_account: str
 
 
 class TokenAccountObject(BaseModel):
@@ -235,8 +239,11 @@ class SignUpObject(LoginObject):
     first_name: str
     last_name: str
     phone: str
+    password: str
     business_type: str  # Validation
 
+
+#class UpdateAccountObject(CreateAccountObject):
 
 class StripeSignUpObject(SignUpObject):
     tos_shown_and_accepted: bool

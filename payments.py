@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 # Directory
 from models import InvoiceObject, InvoiceDeleteObject, UpdateInvoiceObject, StatRequestObject
-
+from tools import deep_convert_to_dict
 # FastAPI
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -21,17 +21,6 @@ issuer_obj = {
 
 # Init
 payments = APIRouter(prefix='/payments', tags=['payments'])
-
-
-def deep_convert_to_dict(item):
-    if isinstance(item, dict):
-        return {k: deep_convert_to_dict(v) for k, v in item.items()}
-    elif isinstance(item, list):
-        return [deep_convert_to_dict(item) for item in item]
-    elif isinstance(item, BaseModel):  # Handle Pydantic models
-        return item.dict()  # Pydantic's built-in method
-    else:
-        return item
 
 
 async def create_invoice_with_new_product_and_customer(og_data, days_until_due=None):

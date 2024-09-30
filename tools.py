@@ -1,5 +1,7 @@
 from typing import Tuple
 
+from pydantic import BaseModel
+
 
 def print_exception(func_name, e):
     print(f"{func_name}, Type: {type(e)} Error: {str(e)}")
@@ -27,3 +29,14 @@ def get_cols_and_placeholders(data: dict) -> Tuple[str, str, list]:
     placeholders = [f"${i}" for i in range(1, len(cols) + 1)]
     values = [data[key] for key in cols]
     return ", ".join(cols), ", ".join(placeholders), values
+
+
+def deep_convert_to_dict(item):
+    if isinstance(item, dict):
+        return {k: deep_convert_to_dict(v) for k, v in item.items()}
+    elif isinstance(item, list):
+        return [deep_convert_to_dict(item) for item in item]
+    elif isinstance(item, BaseModel):  # Handle Pydantic models
+        return item.dict()  # Pydantic's built-in method
+    else:
+        return item
