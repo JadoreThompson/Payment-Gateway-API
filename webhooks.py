@@ -1,4 +1,5 @@
 import asyncio
+import aiohttp
 import json
 
 # Dir
@@ -11,6 +12,8 @@ from fastapi.responses import JSONResponse
 
 webhook = APIRouter(prefix='/webhooks', tags=['webhooks'])
 
+DJANGO_URL = 'http://127.0.0.1:8000/api'
+
 
 @webhook.get('/')
 async def read_root():
@@ -20,43 +23,69 @@ async def read_root():
 @webhook.post('/invoice/receive')
 async def webhook_invoice(request: Request, bg_task: BackgroundTasks):
     body = await request.body()
-    bg_task.add_task(process_bytes, body)
-    return JSONResponse(status_code=200, content={"message": "Successfully received event"})
+    bg_task.add_task(process_bytes, body, 1)
+    return JSONResponse(status_code=202, content={"message": "Successfully received event"})
 
 
-async def process_bytes(body: bytes):
+async def process_bytes(body: bytes, path: int = None):
     try:
         event = json.loads(body)
-        await process_event(event)
+        if path == 1:
+            await process_invoice_event(event)
+        if path == 0:
+            await process_transaction_event(event)
     except Exception as e:
         print(f"({process_bytes.__name__}) {type(e)} - {str(e)}")
 
 
-async def process_event(event: dict):
-    if event['type'] == 'invoice.paid':
-        content = {
-            'type': 'invoice.paid',
-            'data': {
-                'invoice_id': event['data']['object']['id'],
-                'amount_paid': event['data']['object']['amount_paid'],
-                'created': event['data']['object']['created']
+async def process_invoice_event(event: dict):
+    try:
+        if event['type'] == 'invoice.paid':
+            content = {
+                'type': 'invoice.paid',
+                'data': {
+                    'invoice_id': event['data']['object']['id'],
+                    'amount_paid': event['data']['object']['amount_paid'],
+                    'created': event['data']['object']['created']
+                }
             }
-        }
-        print(json.dumps(content, indent=4))
-        return JSONResponse(status_code=200, content=content)
+            async with aiohttp.ClientSession() as session:
+                await session.post(f"{DJANGO_URL}/receive-invoice-updates", json=content)
 
-    if event['type'] == 'invoice.deleted':
-        content = {
-            'type': 'invoice.deleted',
-            'data': {
-                'invoice_id': event['data']['object']['id'],
-                'created': event['data']['object']['created']
+        if event['type'] == 'invoice.deleted':
+            content = {
+                'type': 'invoice.deleted',
+                'data': {
+                    'invoice_id': event['data']['object']['id'],
+                    'created': event['data']['object']['created']
+                }
             }
-        }
-        print(json.dumps(content, indent=4))
-        return JSONResponse(status_code=200, content=content)
+            async with aiohttp.ClientSession() as session:
+                await session.post(f"{DJANGO_URL}/receive-invoice-updates", json=content)
+    except Exception as e:
+        print(type(e), str(e))
 
 
-@webhook.get("/transactions/receive")
-async def webhook_transaction(request: Request):
-    json_data = await request.json()
+async def process_transaction_event(event: dict):
+    try:
+        if event['type'] == 'charge.succeeded':
+            content = {
+                'type': 'charge.succeeded',
+                'data': {
+                    'transaction_id': event['data']['object']['id'],
+                    'amount': event['data']['object']['amount_captured'],
+                    'created': event['data']['object']['created']
+                }
+            }
+            print()
+            async with aiohttp.ClientSession() as session:
+                await session.post(f"{DJANGO_URL}/receive-transaction-updates", json=content)
+    except Exception as e:
+        print(type(e), str(e))
+
+
+@webhook.post("/transactions/receive")
+async def webhook_transaction(request: Request, bg_task: BackgroundTasks):
+    body = await request.body()
+    bg_task.add_task(process_bytes, body, 0)
+    return JSONResponse(status_code=202, content={"message": "Successfully received event"})
