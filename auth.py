@@ -138,7 +138,7 @@ async def login(user: LoginObject):
 
 
 @auth.post("/update-user")
-async def update_user(update_individual_request: str = Form(...), individual_file: Annotated[bytes | UploadFile, File()] = None, update_business_profile_request: Optional[AccountUpdateBusinessProfileObject] = None):
+async def update_user(update_bank_info: Annotated[str, Form(...)] = None, update_individual_request: Annotated[str, Form(...)] = None, individual_file: Annotated[bytes | UploadFile, File()] = None, update_business_profile_request: Optional[AccountUpdateBusinessProfileObject] = None):
     try:
         if update_business_profile_request is not None:
             # Sending docs off to stripe
@@ -162,6 +162,15 @@ async def update_user(update_individual_request: str = Form(...), individual_fil
             individual_request_data['verification'] = {'document': {'front': file_token['id']}}
             token = await stripe.Token.create_async(account={"individual": individual_request_data['individual']})
             await stripe.Account.modify_async(account_token=token, stripe_account=individual_request_data['stripe_account'],)
+
+        if update_bank_info is not None:
+            bank_dict = json.loads(update_bank_info)
+            stripe_account = bank_dict['stripe_account']
+
+            del bank_dict['stripe_account']
+            bank_token = await stripe.Token.create_async(bank_account=bank_dict)
+
+            await stripe.Account.modify_async(stripe_account=stripe_account, external_account=bank_token['id'])
 
         return JSONResponse(status_code=200, content={"message": 'Successfully updated account', 'time': datetime.datetime.now().timestamp()})
     except InvalidRequestError as e:
