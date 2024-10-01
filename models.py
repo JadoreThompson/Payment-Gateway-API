@@ -1,7 +1,14 @@
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field, root_validator
+
+from fastapi import File, UploadFile, Form
+from pydantic import (
+    BaseModel,
+    EmailStr,
+    Field,
+    root_validator,
+)
 
 '''Enums'''
 
@@ -72,12 +79,12 @@ class OwnershipDeclaration(BaseModel):
 
 
 class DocumentObject(BaseModel):
-    back: str
-    front: str
+    back: Optional[str] = None
+    front: Optional[str] = None
 
 
 class VerificationObject(BaseModel):
-    document: DocumentObject
+    document: Optional[DocumentObject] = None
     additional_document: Optional[DocumentObject] = None
 
 
@@ -217,7 +224,8 @@ class CreateAccountObject(BaseModel):
 
 
 class AccountUpdateIndividualObject(CreateAccountObject):
-    stripe_account: str
+    stripe_account: str = Form(...)
+    individual_file: UploadFile = File(...)
 
 
 class AccountUpdateBusinessProfileObject(BaseModel):
@@ -248,8 +256,6 @@ class SignUpObject(LoginObject):
     password: str
     business_type: str  # Validation
 
-
-#class UpdateAccountObject(CreateAccountObject):
 
 class StripeSignUpObject(SignUpObject):
     tos_shown_and_accepted: bool

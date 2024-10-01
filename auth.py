@@ -1,4 +1,5 @@
 import datetime
+import json
 import time
 import stripe
 import re
@@ -22,9 +23,8 @@ from models import (
 from tools import print_exception, get_cols_and_placeholders
 
 # FastAPI
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, Request
 from fastapi.responses import JSONResponse
-
 
 # Initialisation
 auth = APIRouter(prefix="/auth", tags=["auth"])
@@ -133,3 +133,18 @@ async def update_user(update_individual_request: Optional[AccountUpdateIndividua
     except Exception as e:
         print(f"{type(e)} - {str(e)}")
         return JSONResponse(status_code=500, content={"message": "Error", "error": f"{str(e)}"})
+
+
+@auth.post('/test')
+async def test(r: AccountUpdateIndividualObject):
+    print(r.individual_file.filename)
+
+
+# Method for file upload
+# with open("IMG_1026.jpg", 'rb') as fp:
+#     var = stripe.File.create(
+#         purpose='additional_verification',
+#         file=fp
+#     )
+#     print(var)
+
