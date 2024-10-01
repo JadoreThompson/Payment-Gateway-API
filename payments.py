@@ -323,17 +323,3 @@ async def get_stats(stats_request: StatRequestObject):
     except Exception as e:
         return JSONResponse(
             status_code=500, content={"message": "Something went wrong", 'type': f"Type: {type(e)}", 'detail': str(e)})
-
-
-# Webhook for auto updates on invoices and products
-@payments.get('/invoice/webhook')
-async def webhook_invoice(request: Request):
-    json_data = await request.json()
-    pass
-
-
-# Webhook for auto updates on transactions
-@payments.get("/transactions/webhook")
-async def webhook_transaction(request: Request):
-    json_data = await request.json()
-    pass

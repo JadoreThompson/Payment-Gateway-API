@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from products import products
+from webhooks import webhook
 
 
 class CustomHTTPException(HTTPException):
@@ -49,6 +50,8 @@ app.include_router(auth)
 app.include_router(payments)
 app.include_router(customer)
 app.include_router(products)
+app.include_router(webhook)
+
 
 @app.get("/")
 async def read_root():
@@ -56,4 +59,4 @@ async def read_root():
 
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", port=5000, reload=True)
+    uvicorn.run("app:app", port=4242, reload=True)
