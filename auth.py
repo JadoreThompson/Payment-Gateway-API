@@ -1,10 +1,12 @@
 import datetime
 import json
 import time
+from io import BytesIO
+
 import stripe
 import re
 from contextlib import asynccontextmanager
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Annotated
 import asyncpg
 from stripe import InvalidRequestError
 
@@ -23,7 +25,7 @@ from models import (
 from tools import print_exception, get_cols_and_placeholders
 
 # FastAPI
-from fastapi import FastAPI, APIRouter, Request
+from fastapi import FastAPI, APIRouter, Request, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 
 # Initialisation
@@ -110,22 +112,56 @@ async def login(user: LoginObject):
                 return JSONResponse(status_code=500, content={"message": "Something went wrong", "error": str(e)})
 
 
+# @auth.post("/update-user")
+# async def update_user(update_individual_request: Optional[AccountUpdateIndividualObject] = None, update_business_profile_request: Optional[AccountUpdateBusinessProfileObject] = None):
+#     try:
+#         if update_business_profile_request is not None:
+#             await stripe.Account.modify_async(
+#                 stripe_account=update_business_profile_request.stripe_account,
+#                 business_profile={'url': update_business_profile_request.url, 'mcc': update_business_profile_request.industry}
+#             )
+#
+#         if update_individual_request is not None:
+#             del update_individual_request.type
+#             del update_individual_request.controller
+#
+#             data = deep_convert_to_dict(update_individual_request.__dict__)
+#             token = await stripe.Token.create_async(account={"individual": data['individual']})
+#             await stripe.Account.modify_async(account_token=token, stripe_account=update_individual_request.stripe_account)
+#
+#         return JSONResponse(status_code=200, content={"message": 'Successfully updated account', 'time': datetime.datetime.now().timestamp()})
+#     except InvalidRequestError as e:
+#         return JSONResponse(status_code=500, content={"message": "Error", 'error': f"{str(e).split(":")[1]}"})
+#     except Exception as e:
+#         print(f"{type(e)} - {str(e)}")
+#         return JSONResponse(status_code=500, content={"message": "Error", "error": f"{str(e)}"})
+
+
 @auth.post("/update-user")
-async def update_user(update_individual_request: Optional[AccountUpdateIndividualObject] = None, update_business_profile_request: Optional[AccountUpdateBusinessProfileObject] = None):
+async def update_user(update_individual_request: str = Form(...), individual_file: Annotated[bytes | UploadFile, File()] = None, update_business_profile_request: Optional[AccountUpdateBusinessProfileObject] = None):
     try:
         if update_business_profile_request is not None:
+            # Sending docs off to stripe
             await stripe.Account.modify_async(
                 stripe_account=update_business_profile_request.stripe_account,
-                business_profile={'url': update_business_profile_request.url, 'mcc': update_business_profile_request.industry}
+                business_profile={'url': update_business_profile_request.url, 'mcc': update_business_profile_request.industry},
             )
 
         if update_individual_request is not None:
-            del update_individual_request.type
-            del update_individual_request.controller
+            # Reading and downloading the file, before sending off to stripe
+            fbytes = await individual_file.read()
+            file_path = "temp/{}".format(individual_file.filename)
 
-            data = deep_convert_to_dict(update_individual_request.__dict__)
-            token = await stripe.Token.create_async(account={"individual": data['individual']})
-            await stripe.Account.modify_async(account_token=token, stripe_account=update_individual_request.stripe_account)
+            with open(file_path, "wb") as temp_file:
+                temp_file.write(fbytes)
+            with open(file_path, 'rb') as fp:
+                file_token = await stripe.File.create_async(file=fp,purpose='account_requirement')
+
+            individual_request_data = json.loads(update_individual_request)
+
+            individual_request_data['verification'] = {'document': {'front': file_token['id']}}
+            token = await stripe.Token.create_async(account={"individual": individual_request_data['individual']})
+            await stripe.Account.modify_async(account_token=token, stripe_account=individual_request_data['stripe_account'],)
 
         return JSONResponse(status_code=200, content={"message": 'Successfully updated account', 'time': datetime.datetime.now().timestamp()})
     except InvalidRequestError as e:
@@ -133,18 +169,3 @@ async def update_user(update_individual_request: Optional[AccountUpdateIndividua
     except Exception as e:
         print(f"{type(e)} - {str(e)}")
         return JSONResponse(status_code=500, content={"message": "Error", "error": f"{str(e)}"})
-
-
-@auth.post('/test')
-async def test(r: AccountUpdateIndividualObject):
-    print(r.individual_file.filename)
-
-
-# Method for file upload
-# with open("IMG_1026.jpg", 'rb') as fp:
-#     var = stripe.File.create(
-#         purpose='additional_verification',
-#         file=fp
-#     )
-#     print(var)
-

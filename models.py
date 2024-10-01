@@ -224,8 +224,7 @@ class CreateAccountObject(BaseModel):
 
 
 class AccountUpdateIndividualObject(CreateAccountObject):
-    stripe_account: str = Form(...)
-    individual_file: UploadFile = File(...)
+    stripe_account: str
 
 
 class AccountUpdateBusinessProfileObject(BaseModel):
