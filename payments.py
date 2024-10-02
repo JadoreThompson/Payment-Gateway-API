@@ -290,7 +290,6 @@ async def get_stats(stats_request: StatRequestObject):
             sales_growth = 0
 
         # Customers
-        #func_args['created']['lt'] = today_midnight
         yesterday_customers = await stripe.Customer.list_async(**func_args)
         yesterday_customers_count = len(yesterday_customers['data'])
 
