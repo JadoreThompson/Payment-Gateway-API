@@ -14,11 +14,6 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from fastapi.requests import Request
 
-# Envs
-issuer_obj = {
-    'type': 'account',
-}
-
 # Init
 payments = APIRouter(prefix='/payments', tags=['payments'])
 
@@ -57,6 +52,7 @@ async def create_invoice_with_new_product_and_customer(og_data, days_until_due=N
         )
 
         invoice = await stripe.Invoice.create_async(
+            auto_advance=True, #  data['auto_advance'],
             customer=customer['id'],
             collection_method='send_invoice',
             stripe_account=connect_account_id,
@@ -193,8 +189,9 @@ async def create_invoice(invoice_request: InvoiceObject):
         days_until_due = int(until_due)
 
         invoice_request_obj = invoice_request.__dict__
-        invoice_request_obj['issuer'] = issuer_obj
-        invoice_request_obj['issuer']['account'] = 'acct_1Q35XsQ8ogKFGPdO'
+        invoice_request_obj['issuer'] = {'type': 'account'}
+        # invoice_request_obj['issuer']['account'] = 'acct_1Q35XsQ8ogKFGPdO'
+        invoice_request_obj['issuer']['account'] = invoice_request.stripe_account
 
         async with httpx.AsyncClient() as client:
             # Creating the invoice
@@ -210,7 +207,8 @@ async def create_invoice(invoice_request: InvoiceObject):
             status = 'draft'
             # Finalising
             if invoice_request.draft == False:
-                await stripe.Invoice.finalize_invoice_async(invoice.invoice, stripe_account="acct_1Q35XsQ8ogKFGPdO")
+                print("Finalizing invoice")
+                await stripe.Invoice.finalize_invoice_async(invoice.invoice, stripe_account=invoice_request.stripe_account)
                 status = 'open'
 
         return JSONResponse(status_code=200, content={
@@ -263,23 +261,22 @@ async def delete_invoice(delete_invoice_request: InvoiceDeleteObject):
 @payments.post("/get-stats")
 async def get_stats(stats_request: StatRequestObject):
     try:
-        stats_request.stripe_account = "acct_1Q35XsQ8ogKFGPdO"
-
         today_midnight = int(datetime(datetime.now().year, datetime.now().month, datetime.now().day, 0, 0).timestamp())
         yesterday_midnight = today_midnight - 86400
 
-        func_args = {**stats_request.dict(), "created": {"gt": None}}
-
-        balance = await stripe.Balance.retrieve_async(**stats_request.dict())['available'][0]['amount']
+        func_args = {**stats_request.dict(), "created": {}}
+        balance = await stripe.Balance.retrieve_async(**stats_request.dict())
+        balance = balance['available'][0]['amount']
 
         # Sales
         func_args['created']['gt'] = today_midnight
         todays_data = await stripe.PaymentIntent.list_async(**func_args)
-        todays_sales = sum(item['amount_received'] for item in todays_data['data'])
+        todays_sales = sum(item['amount_received'] for item in todays_data['data']) / 100
         try: todays_average_order_value = todays_sales / len(todays_data['data'])
         except ZeroDivisionError: todays_average_order_value = 0
 
         func_args["created"]["gt"] = yesterday_midnight
+        func_args['created']['lt'] = today_midnight
         yesterday_data = await stripe.PaymentIntent.list_async(**func_args)
         yesterday_sales = sum(item['amount_received'] for item in todays_data['data'])
         try: yesterday_average_order_value = todays_sales / len(yesterday_data['data'])
@@ -293,9 +290,11 @@ async def get_stats(stats_request: StatRequestObject):
             sales_growth = 0
 
         # Customers
+        #func_args['created']['lt'] = today_midnight
         yesterday_customers = await stripe.Customer.list_async(**func_args)
         yesterday_customers_count = len(yesterday_customers['data'])
 
+        del func_args['created']['lt']
         func_args['created']['gt'] = today_midnight
         today_customers = await stripe.Customer.list_async(**func_args)
         today_customers_count = len(today_customers['data'])

@@ -86,12 +86,7 @@ async def process_transaction_event(event: dict):
                     'created': event['data']['object']['created']
                 }
             }
-            print(json.dumps(event, indent=4))
             async with aiohttp.ClientSession() as session:
                 await session.post(f"{DJANGO_URL}/receive-transaction-updates", json=content)
     except Exception as e:
         print(type(e), str(e))
-
-
-print(json.dumps(stripe.Charge.retrieve("ch_3Q5Q80L8QfTmAOru1jPqwJDJ"), indent=4))
-#print(json.dumps(stripe.Invoice.retrieve("in_1Q5Q7zL8QfTmAOruzYCSPdOc"), indent=4))
