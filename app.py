@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from products import products
-from webhooks import webhook
+from webhooks import webhooks
 
 
 class CustomHTTPException(HTTPException):
@@ -50,7 +50,7 @@ app.include_router(auth)
 app.include_router(payments)
 app.include_router(customer)
 app.include_router(products)
-app.include_router(webhook)
+app.include_router(webhooks)
 
 
 @app.get("/")

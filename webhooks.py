@@ -2,6 +2,8 @@ import asyncio
 import aiohttp
 import json
 
+import stripe
+
 # Dir
 from models import CreateProductObject
 
@@ -10,17 +12,17 @@ from fastapi import APIRouter, Request, BackgroundTasks
 from fastapi.responses import JSONResponse
 
 
-webhook = APIRouter(prefix='/webhooks', tags=['webhooks'])
+webhooks = APIRouter(prefix='/webhooks', tags=['webhooks'])
 
 DJANGO_URL = 'http://127.0.0.1:8000/api'
 
 
-@webhook.get('/')
+@webhooks.get('/')
 async def read_root():
     return {"message": "Running"}
 
 
-@webhook.post('/invoice/receive')
+@webhooks.post('/invoice/receive')
 async def webhook_invoice(request: Request, bg_task: BackgroundTasks):
     body = await request.body()
     bg_task.add_task(process_bytes, body, 1)
@@ -66,6 +68,13 @@ async def process_invoice_event(event: dict):
         print(type(e), str(e))
 
 
+@webhooks.post("/transactions/receive")
+async def webhook_transaction(request: Request, bg_task: BackgroundTasks):
+    body = await request.body()
+    bg_task.add_task(process_bytes, body, 0)
+    return JSONResponse(status_code=202, content={"message": "Successfully received event"})
+
+
 async def process_transaction_event(event: dict):
     try:
         if event['type'] == 'charge.succeeded':
@@ -77,15 +86,12 @@ async def process_transaction_event(event: dict):
                     'created': event['data']['object']['created']
                 }
             }
-            print()
+            print(json.dumps(event, indent=4))
             async with aiohttp.ClientSession() as session:
                 await session.post(f"{DJANGO_URL}/receive-transaction-updates", json=content)
     except Exception as e:
         print(type(e), str(e))
 
 
-@webhook.post("/transactions/receive")
-async def webhook_transaction(request: Request, bg_task: BackgroundTasks):
-    body = await request.body()
-    bg_task.add_task(process_bytes, body, 0)
-    return JSONResponse(status_code=202, content={"message": "Successfully received event"})
+print(json.dumps(stripe.Charge.retrieve("ch_3Q5Q80L8QfTmAOru1jPqwJDJ"), indent=4))
+#print(json.dumps(stripe.Invoice.retrieve("in_1Q5Q7zL8QfTmAOruzYCSPdOc"), indent=4))
