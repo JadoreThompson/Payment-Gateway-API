@@ -2,9 +2,7 @@ import json
 import sys
 import stripe
 import httpx
-from datetime import datetime, time
-
-from pydantic import BaseModel
+from datetime import datetime
 
 # Directory
 from models import InvoiceObject, InvoiceDeleteObject, UpdateInvoiceObject, StatRequestObject
@@ -12,7 +10,7 @@ from tools import deep_convert_to_dict
 # FastAPI
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-from fastapi.requests import Request
+
 
 # Init
 payments = APIRouter(prefix='/payments', tags=['payments'])

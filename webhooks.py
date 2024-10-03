@@ -1,11 +1,5 @@
-import asyncio
 import aiohttp
 import json
-
-import stripe
-
-# Dir
-from models import CreateProductObject
 
 # FastAPI
 from fastapi import APIRouter, Request, BackgroundTasks
