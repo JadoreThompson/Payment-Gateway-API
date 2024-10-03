@@ -10,10 +10,8 @@ from fastapi.responses import JSONResponse
 from stripe import InvalidRequestError
 
 # Directory Modules
-from Resources.validators import check_if_user_exists, validate_password
-from db_connection import get_connection
+from Resources.validators import validate_password
 from models import (
-    LoginObject,
     StripeSignUpObject,
     AccountUpdateBusinessProfileObject
 )
@@ -69,7 +67,7 @@ async def signup(user: StripeSignUpObject):
     :param user:
     :return:
     """
-
+    print(1)
     # Note: Send email confirmation for security
     try:
         validate_password(user.password)
@@ -77,12 +75,17 @@ async def signup(user: StripeSignUpObject):
         return JSONResponse(status_code=409, content={"message": str(e)})
 
     try:
+        print(2)
         token = create_token(user.business_type, user.first_name, user.last_name, user.tos_shown_and_accepted)
+        print(3)
         account = create_account(user.email, token)
+        print(4)
         return JSONResponse(status_code=200, content={
             "message": "Successfully created user", 'account': {'account': account['id']}
         })
     except Exception as e:
+        print(5)
+        print(f"{type(e)} - {str(e)}")
         return JSONResponse(status_code=500, content={"message": "Internal server error", "type": f"{type(e)}", "detail": str(e)})
 
 

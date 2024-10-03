@@ -1,17 +1,14 @@
 from contextlib import asynccontextmanager
 
 # Directory Modules
-from config import STRIPE_API_KEY
-from db_connection import get_connection, init_db_pool, close_db_pool
+import config
 from auth import auth
 from customer import customer
 from payments import payments
 
 # FastAPI
 import uvicorn
-from pydantic import ValidationError
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from products import products
@@ -28,15 +25,9 @@ origins = [
     "http://127.0.0.1:8000"
 ]
 
+
 # Initialisation
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await init_db_pool()
-    yield
-    await close_db_pool()
-
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
